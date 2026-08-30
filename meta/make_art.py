@@ -28,11 +28,11 @@ SS = 4                      # supersampling factor
 
 def mark(d, cx, cy, r, plus_r):
     """Wi-Fi arcs opening upward + a bold accent '+' up and to the right."""
-    aw = max(2, int(r * 0.16))
-    for i, rad in enumerate((r, r * 0.64, r * 0.30)):
+    aw = max(2, int(r * 0.15))
+    for i, rad in enumerate((r, r * 0.72, r * 0.46)):
         col = WHITE if i != 1 else ACCENT   # outer wave white so it doesn't blend
         d.arc([cx - rad, cy - rad, cx + rad, cy + rad], 215, 325, fill=col, width=aw)
-    d.ellipse([cx - aw, cy - aw, cx + aw, cy + aw], fill=ACCENT)
+    d.ellipse([cx - aw, cy - aw, cx + aw, cy + aw], fill=ACCENT)   # centre dot, well clear of the inner wave
 
     px, py = cx + r * 0.95, cy - r * 0.75
     t = max(2, int(plus_r * 0.34))

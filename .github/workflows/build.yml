@@ -1,0 +1,46 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-3ds:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build (.3dsx + .cia)
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          export DEVKITPRO=/opt/devkitpro
+          export DEVKITARM=/opt/devkitpro/devkitARM
+          chmod +x tools/bin/bannertool tools/bin/makerom
+          make clean
+          make -j"$(nproc)"
+          make -s print-version
+
+      - name: Name the build
+        id: v
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          echo "safe=$(make -s print-version | tr '+/ ' '---')" >> "$GITHUB_OUTPUT"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: WiFiManagerPlus-${{ steps.v.outputs.safe }}
+          path: |
+            out/WiFiManagerPlus.cia
+            out/WiFiManagerPlus.3dsx
+          if-no-files-found: error

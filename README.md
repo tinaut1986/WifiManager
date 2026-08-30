@@ -55,8 +55,13 @@ Requires [devkitPro](https://devkitpro.org/) with `devkitARM`, `libctru` and
 make
 ```
 
-Produces `out/WiFiManagerPlus.3dsx` (and `out/WiFiManagerPlus.cia` when `makerom`
-and `bannertool` are on `PATH`).
+Produces `out/WiFiManagerPlus.3dsx` and `out/WiFiManagerPlus.cia` (using the
+`bannertool` / `makerom` binaries vendored in `tools/bin/`, or ones on `PATH`).
+
+`make print-version` prints the git-derived version; `make ftp` pushes the
+build to a 3DS running FTPD. Branch model and release process:
+[RELEASING.md](RELEASING.md). CI builds every push to `main` / `release/**`
+and publishes a GitHub Release (CIA + QR + changelog) on each `v*` tag.
 
 ### Banner / icon
 

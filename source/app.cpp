@@ -18,6 +18,10 @@ extern "C" {
 
 extern FS_Archive sdmcArchive;
 
+#ifndef APP_VERSION
+#define APP_VERSION "dev"
+#endif
+
 using draw::AlignCenter;
 using draw::AlignRight;
 
@@ -549,7 +553,7 @@ void runHelp()
 
         draw::frameBegin();
         draw::sceneTop();
-        drawHeader("How to use");
+        drawHeader("How to use", APP_VERSION);
         float x = theme::pad, y = theme::headerH + 12;
         const char* lines[] = {
             "D-pad Left/Right   switch console slot",
