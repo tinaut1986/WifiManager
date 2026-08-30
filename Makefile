@@ -50,7 +50,7 @@ VERSION ?= $(GIT_VERSION)
 
 # makerom needs a numeric major.minor.micro. Extract it only from a proper
 # leading vX.Y.Z (e.g. v0.1.0 or v0.1.0-dev.3+abc); anything else -> 0 0 0.
-VER_TRIPLE  := $(shell sh $(CURDIR)/tools/mk/version-triple.sh '$(VERSION)')
+VER_TRIPLE  := $(shell sh $(TOPDIR)/tools/mk/version-triple.sh '$(VERSION)')
 VER_MAJOR   := $(word 1,$(VER_TRIPLE))
 VER_MINOR   := $(word 2,$(VER_TRIPLE))
 VER_MICRO   := $(word 3,$(VER_TRIPLE))
