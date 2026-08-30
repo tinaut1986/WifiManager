@@ -2,32 +2,42 @@
 #include <citro2d.h>
 
 // -----------------------------------------------------------------------------
-//  Modern flat theme. One place to tweak the whole look of the app.
+//  Theme system: Dark, Light, and Midnight color palettes.
 // -----------------------------------------------------------------------------
 
 namespace theme
 {
-    // Surfaces
-    constexpr u32 bg          = C2D_Color32(0x0F, 0x14, 0x1B, 0xFF); // near-black blue
-    constexpr u32 surface     = C2D_Color32(0x1B, 0x24, 0x30, 0xFF);
-    constexpr u32 surfaceAlt  = C2D_Color32(0x23, 0x30, 0x40, 0xFF);
-    constexpr u32 overlay     = C2D_Color32(0x00, 0x00, 0x00, 0xB0);
+    enum class Type {
+        Dark = 0,
+        Light = 1,
+        Midnight = 2,
+    };
 
-    // Accents
-    constexpr u32 accent      = C2D_Color32(0x3A, 0x9B, 0xFF, 0xFF); // blue
-    constexpr u32 accentDim   = C2D_Color32(0x24, 0x5A, 0x8C, 0xFF);
-    constexpr u32 good        = C2D_Color32(0x3B, 0xD1, 0x7E, 0xFF); // green
-    constexpr u32 warn        = C2D_Color32(0xFF, 0xC1, 0x4E, 0xFF); // amber
-    constexpr u32 danger      = C2D_Color32(0xFF, 0x5C, 0x5C, 0xFF); // red
+    // Dynamic surfaces
+    extern u32 bg;
+    extern u32 surface;
+    extern u32 surfaceAlt;
+    extern u32 overlay;
 
-    // Text
-    constexpr u32 text        = C2D_Color32(0xF2, 0xF5, 0xF8, 0xFF);
-    constexpr u32 textDim     = C2D_Color32(0x9A, 0xA7, 0xB4, 0xFF);
-    constexpr u32 textOnAccent= C2D_Color32(0x0B, 0x12, 0x1A, 0xFF);
+    // Dynamic accents
+    extern u32 accent;
+    extern u32 accentDim;
+    extern u32 good;
+    extern u32 warn;
+    extern u32 danger;
+
+    // Dynamic text
+    extern u32 text;
+    extern u32 textDim;
+    extern u32 textOnAccent;
 
     // Metrics
     constexpr float pad       = 10.0f;
     constexpr float radius    = 8.0f;
     constexpr float headerH   = 28.0f;
     constexpr float hintH     = 20.0f;
+
+    void apply(Type t);
+    const char* name(Type t);
 }
+

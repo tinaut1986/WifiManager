@@ -108,6 +108,7 @@ float textHeight(float scale)
 
 void text(float x, float y, float scale, u32 color, const std::string& s, Align align)
 {
+    if (s.empty()) return;
     C2D_Text t = parse(s);
     u32 flags = C2D_WithColor;
     if (align == AlignCenter) { flags |= C2D_AlignCenter; }
@@ -115,32 +116,198 @@ void text(float x, float y, float scale, u32 color, const std::string& s, Align 
     C2D_DrawText(&t, flags, x, y, 0.0f, scale, scale, color);
 }
 
-float textWrapped(float x, float y, float scale, u32 color, const std::string& s, float maxWidth)
+void textTruncated(float x, float y, float scale, u32 color, const std::string& s, float maxWidth, Align align)
 {
-    std::istringstream iss(s);
-    std::string word, line;
-    float lh = textHeight(scale) + 2.0f;
-    float cy = y;
+    if (s.empty()) return;
+    if (maxWidth <= 0.0f) return;
 
-    auto flush = [&]() {
-        if (!line.empty()) { text(x, cy, scale, color, line); cy += lh; line.clear(); }
+    if (textWidth(s, scale) <= maxWidth)
+    {
+        text(x, y, scale, color, s, align);
+        return;
+    }
+
+    const std::string ellipsis = "...";
+    float ellW = textWidth(ellipsis, scale);
+    if (ellW >= maxWidth)
+    {
+        text(x, y, scale, color, ".", align);
+        return;
+    }
+
+    std::string truncated = s;
+    while (!truncated.empty())
+    {
+        truncated.pop_back();
+        if (textWidth(truncated, scale) + ellW <= maxWidth)
+        {
+            text(x, y, scale, color, truncated + ellipsis, align);
+            return;
+        }
+    }
+    text(x, y, scale, color, ellipsis, align);
+}
+
+float textFitScale(const std::string& s, float maxScale, float minScale, float maxWidth)
+{
+    if (s.empty() || maxWidth <= 0.0f) return maxScale;
+    float currentWidth = textWidth(s, maxScale);
+    if (currentWidth <= maxWidth) return maxScale;
+
+    float factor = maxWidth / currentWidth;
+    float scaled = maxScale * factor;
+    if (scaled < minScale) return minScale;
+    return scaled;
+}
+
+static std::vector<std::string> breakParagraphToLines(const std::string& para, float scale, float maxWidth)
+{
+    std::vector<std::string> lines;
+    if (maxWidth <= 0.0f) return lines;
+
+    std::string currentLine;
+    std::istringstream iss(para);
+    std::string word;
+
+    auto flushLine = [&]() {
+        if (!currentLine.empty())
+        {
+            lines.push_back(currentLine);
+            currentLine.clear();
+        }
     };
 
     while (iss >> word)
     {
-        std::string candidate = line.empty() ? word : line + " " + word;
-        if (textWidth(candidate, scale) > maxWidth && !line.empty())
+        std::string candidate = currentLine.empty() ? word : currentLine + " " + word;
+        if (textWidth(candidate, scale) <= maxWidth)
         {
-            flush();
-            line = word;
+            currentLine = candidate;
         }
         else
         {
-            line = candidate;
+            // Candidate doesn't fit
+            if (!currentLine.empty())
+            {
+                flushLine();
+            }
+
+            // If the word itself fits on a new line
+            if (textWidth(word, scale) <= maxWidth)
+            {
+                currentLine = word;
+            }
+            else
+            {
+                // Word is wider than maxWidth (e.g. continuous key or long URI) -> break by character
+                for (size_t i = 0; i < word.size(); ++i)
+                {
+                    std::string nextCandidate = currentLine + word[i];
+                    if (textWidth(nextCandidate, scale) <= maxWidth || currentLine.empty())
+                    {
+                        currentLine = nextCandidate;
+                    }
+                    else
+                    {
+                        flushLine();
+                        currentLine = std::string(1, word[i]);
+                    }
+                }
+            }
         }
     }
-    flush();
+
+    flushLine();
+    return lines;
+}
+
+float textWrapped(float x, float y, float scale, u32 color, const std::string& s, float maxWidth, int maxLines)
+{
+    if (s.empty() || maxWidth <= 0.0f) return 0.0f;
+
+    float lh = textHeight(scale) + 2.0f;
+    float cy = y;
+    int lineCount = 0;
+
+    std::istringstream iss(s);
+    std::string para;
+
+    while (std::getline(iss, para))
+    {
+        if (para.empty())
+        {
+            // Empty line / newline
+            cy += lh;
+            lineCount++;
+            if (maxLines > 0 && lineCount >= maxLines) break;
+            continue;
+        }
+
+        std::vector<std::string> lines = breakParagraphToLines(para, scale, maxWidth);
+        for (const auto& l : lines)
+        {
+            text(x, cy, scale, color, l);
+            cy += lh;
+            lineCount++;
+            if (maxLines > 0 && lineCount >= maxLines) break;
+        }
+        if (maxLines > 0 && lineCount >= maxLines) break;
+    }
+
     return cy - y;
 }
 
+void iconQr(float cx, float cy, float size, u32 color, u32 bgColor)
+{
+    // 13x13 authentic QR icon bitmap
+    static const u16 qrPattern[13] = {
+        0b1111101011111, // row 0: [#####] . # . [#####]
+        0b1000100010001, // row 1: [#...#] . . . [#...#]
+        0b1010101010101, // row 2: [#.###] . # . [#.###]
+        0b1000100010001, // row 3: [#...#] . . . [#...#]
+        0b1111101011111, // row 4: [#####] . # . [#####]
+        0b0000000000000, // row 5: ....... . . . .......
+        0b1010101010101, // row 6: #.#.#.# . # . #.#.#.#
+        0b0000000000000, // row 7: ....... . . . .......
+        0b1111101010101, // row 8: [#####] . # . # . # .
+        0b1000100001110, // row 9: [#...#] . . . . ### .
+        0b1010101011011, // row 10:[#.###] . # . ## . ##
+        0b1000100001101, // row 11:[#...#] . . . . ## .#
+        0b1111101010111, // row 12:[#####] . # . # . ###
+    };
+
+    const int N = 13;
+    float m = size / static_cast<float>(N);
+    float x0 = cx - size * 0.5f;
+    float y0 = cy - size * 0.5f;
+
+    for (int r = 0; r < N; ++r)
+    {
+        for (int c = 0; c < N; ++c)
+        {
+            if ((qrPattern[r] >> (N - 1 - c)) & 1)
+            {
+                rect(x0 + c * m, y0 + r * m, m, m, color);
+            }
+        }
+    }
+}
+
+void iconGear(float cx, float cy, float radius, u32 color, u32 bgColor)
+{
+    float toothR = radius * 0.30f;
+    float toothDist = radius * 0.68f;
+    for (int i = 0; i < 6; ++i)
+    {
+        float angle = static_cast<float>(i) * (3.1415926535f / 3.0f);
+        float tx = cx + toothDist * std::cos(angle);
+        float ty = cy + toothDist * std::sin(angle);
+        circle(tx, ty, toothR, color);
+    }
+    circle(cx, cy, radius * 0.70f, color);
+    circle(cx, cy, radius * 0.28f, bgColor);
+}
+
 } // namespace draw
+
+
