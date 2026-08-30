@@ -10,11 +10,12 @@ TOPDIR ?= $(CURDIR)
 include $(DEVKITARM)/3ds_rules
 
 #---------------------------------------------------------------------------------
-APP_TITLE       :=	WifiManager
-APP_DESCRIPTION :=	Modern backup, restore & QR import for your Wi-Fi slots
-APP_AUTHOR      :=	LiquidFenrir, tinaut1986
+# Fork of LiquidFenrir's WifiManager, maintained by tinaut1986.
+APP_TITLE       :=	WiFiManager+
+APP_DESCRIPTION :=	Backup, restore, edit & QR share for your Wi-Fi slots
+APP_AUTHOR      :=	tinaut1986 (fork of LiquidFenrir)
 
-TARGET          :=	$(subst $e ,_,$(notdir $(APP_TITLE)))
+TARGET          :=	WiFiManagerPlus
 BUILD           :=	build
 SOURCES         :=	source source/quirc source/qrcodegen
 DATA            :=	data
@@ -22,11 +23,13 @@ INCLUDES        :=	source
 OUTDIR          :=	out
 
 ICON            :=	meta/icon.png
-BANNER_IMAGE    :=	meta/banner.png
+# Drop in meta/banner.cgfx (an authored layered/animated 3D banner) and it will
+# be used automatically; otherwise the flat meta/banner.png is used.
+BANNER_IMAGE    :=	$(if $(wildcard meta/banner.cgfx),meta/banner.cgfx,meta/banner.png)
 BANNER_AUDIO    :=	meta/audio.wav
 RSF_PATH        :=	meta/app.rsf
-UNIQUE_ID       :=	0x05DC9
-PRODUCT_CODE    :=	CTR-P-WIFI
+UNIQUE_ID       :=	0x05DCA
+PRODUCT_CODE    :=	CTR-P-WFMP
 ICON_FLAGS      :=	nosavebackups,visible
 
 #---------------------------------------------------------------------------------
@@ -115,7 +118,7 @@ endif
 cia: $(OUTDIR)/$(TARGET).cia
 
 $(OUTDIR)/$(TARGET).cia: $(OUTPUT).elf
-	@$(BANNERTOOL) makebanner -i "$(BANNER_IMAGE)" -a "$(BANNER_AUDIO)" -o "$(BUILD)/banner.bnr"
+	@$(BANNERTOOL) makebanner $(if $(filter %.cgfx,$(BANNER_IMAGE)),-ci,-i) "$(BANNER_IMAGE)" -a "$(BANNER_AUDIO)" -o "$(BUILD)/banner.bnr"
 	@$(BANNERTOOL) makesmdh -s "$(APP_TITLE)" -l "$(APP_DESCRIPTION)" -p "$(APP_AUTHOR)" -i "$(APP_ICON)" -f "$(ICON_FLAGS)" -o "$(BUILD)/icon.icn"
 	@$(MAKEROM) -f cia -o "$@" -target t -exefslogo -elf "$(OUTPUT).elf" -rsf "$(RSF_PATH)" \
 		-banner "$(BUILD)/banner.bnr" -icon "$(BUILD)/icon.icn" \

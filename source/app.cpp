@@ -366,7 +366,7 @@ void drawSlotCard(float x, float y, float w, float h,
 void drawHome()
 {
     draw::sceneTop();
-    drawHeader("WifiManager", "SELECT / R: help");
+    drawHeader("WiFiManager+", "SELECT / R: help");
 
     float cardY = theme::headerH + 10;
     float cardH = 240 - cardY - theme::hintH - 10;

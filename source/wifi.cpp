@@ -12,15 +12,12 @@ extern "C" {
 #include "checksum.h"
 }
 
-#ifndef TITLE
-#define TITLE "WifiManager"
-#endif
-
 extern FS_Archive sdmcArchive;
 
 namespace
 {
-    const char* kWorkingDir = "/3ds/" TITLE;
+    // Kept stable across the rename so existing backups stay in place.
+    const char* kWorkingDir = "/3ds/WifiManager";
 
     std::string trimNul(const char* p, size_t maxLen)
     {
