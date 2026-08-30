@@ -1,0 +1,105 @@
+name: Build 3DS Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-3ds:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build (.3dsx + .cia)
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          export DEVKITPRO=/opt/devkitpro
+          export DEVKITARM=/opt/devkitpro/devkitARM
+          chmod +x tools/bin/bannertool tools/bin/makerom
+          make clean
+          make -j"$(nproc)"
+
+      # Container shell is dash -- POSIX only, no [[ ]].
+      - name: Determine version / tag
+        id: vars
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          VERSION="$(make -s print-version)"
+          case "$GITHUB_REF" in
+            refs/tags/*) TAG="${GITHUB_REF#refs/tags/}"; IS_TAG=true ;;
+            *)           TAG="$VERSION";               IS_TAG=false ;;
+          esac
+          # asset-safe (GitHub dislikes some chars in filenames)
+          SAFE="$(printf '%s' "$TAG" | tr '+/ ' '---')"
+          {
+            echo "version=$VERSION"
+            echo "tag=$TAG"
+            echo "safe=$SAFE"
+            echo "is_tag=$IS_TAG"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Package assets, changelog and QR code
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          TAG='${{ steps.vars.outputs.tag }}'
+          SAFE='${{ steps.vars.outputs.safe }}'
+          REPO='${{ github.repository }}'
+          BASE="https://github.com/${REPO}/releases/download/${TAG}"
+
+          cp out/WiFiManagerPlus.cia  "WiFiManagerPlus-${SAFE}.cia"
+          cp out/WiFiManagerPlus.3dsx "WiFiManagerPlus-${SAFE}.3dsx"
+
+          PREV="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
+          RANGE="${PREV:+${PREV}..}HEAD"
+
+          {
+            echo "![QR code for the ${TAG} CIA](${BASE}/QR-${SAFE}.png)"
+            echo
+            echo "_Scan with your phone or Universal-Updater to get the CIA download link._"
+            echo
+            echo "## Downloads"
+            echo
+            echo "- [WiFiManagerPlus-${SAFE}.cia](${BASE}/WiFiManagerPlus-${SAFE}.cia)"
+            echo "- [WiFiManagerPlus-${SAFE}.3dsx](${BASE}/WiFiManagerPlus-${SAFE}.3dsx)"
+            echo
+            echo "## Changelog"
+            echo
+            git log ${RANGE} --no-merges --pretty='- %s (%h)'
+          } > release_notes.md
+
+          apt-get update -qq && apt-get install -y -qq qrencode >/dev/null
+          qrencode -s 8 -o "QR-${SAFE}.png" "${BASE}/WiFiManagerPlus-${SAFE}.cia"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: WiFiManagerPlus-${{ steps.vars.outputs.safe }}
+          path: |
+            out/WiFiManagerPlus.cia
+            out/WiFiManagerPlus.3dsx
+
+      - name: Create / update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: ${{ steps.vars.outputs.tag }}
+          draft: false
+          prerelease: ${{ steps.vars.outputs.is_tag != 'true' }}
+          body_path: release_notes.md
+          files: |
+            WiFiManagerPlus-${{ steps.vars.outputs.safe }}.cia
+            WiFiManagerPlus-${{ steps.vars.outputs.safe }}.3dsx
+            QR-${{ steps.vars.outputs.safe }}.png
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
