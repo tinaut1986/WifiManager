@@ -176,13 +176,13 @@ bool confirm(const std::string& title, const std::string& body)
         touchPosition touch;
         hidTouchRead(&touch);
 
-        float bw = 320, bh = 130, bx = 40, by = 55;
+        float bw = 340, bh = 145, bx = 30, by = 47;
 
         if (k & KEY_A) return true;
         if (k & KEY_B) return false;
         if (k & KEY_TOUCH)
         {
-            if (touch.py >= by + bh - 32 && touch.py <= by + bh)
+            if (touch.py >= by + bh - 36 && touch.py <= by + bh)
             {
                 if (touch.px >= bx && touch.px < bx + bw / 2) return true;
                 if (touch.px >= bx + bw / 2 && touch.px <= bx + bw) return false;
@@ -199,14 +199,14 @@ bool confirm(const std::string& title, const std::string& body)
         draw::panel(bx, by, bw, bh, theme::surface, theme::radius);
         draw::rect(bx, by, bw, 3, theme::accent);
         draw::textTruncated(bx + bw / 2, by + 12, FS_TITLE, theme::text, title, bw - 32, AlignCenter);
-        draw::textWrapped(bx + 16, by + 38, FS_BODY, theme::textDim, body, bw - 32);
+        draw::textWrapped(bx + 16, by + 36, FS_BODY, theme::text, body, bw - 32);
         
         // Buttons bar
-        draw::panel(bx + 16, by + bh - 26, bw / 2 - 24, 20, theme::accentDim, 5);
-        draw::text(bx + 16 + (bw / 2 - 24) / 2, by + bh - 23, FS_SMALL, theme::text, lang::get(lang::STR_BTN_CONFIRM), AlignCenter);
+        draw::panel(bx + 16, by + bh - 28, bw / 2 - 24, 22, theme::accentDim, 5);
+        draw::text(bx + 16 + (bw / 2 - 24) / 2, by + bh - 24, FS_SMALL, theme::text, lang::get(lang::STR_BTN_CONFIRM), AlignCenter);
 
-        draw::panel(bx + bw / 2 + 8, by + bh - 26, bw / 2 - 24, 20, theme::surfaceAlt, 5);
-        draw::text(bx + bw / 2 + 8 + (bw / 2 - 24) / 2, by + bh - 23, FS_SMALL, theme::textDim, lang::get(lang::STR_BTN_CANCEL), AlignCenter);
+        draw::panel(bx + bw / 2 + 8, by + bh - 28, bw / 2 - 24, 22, theme::surfaceAlt, 5);
+        draw::text(bx + bw / 2 + 8 + (bw / 2 - 24) / 2, by + bh - 24, FS_SMALL, theme::textDim, lang::get(lang::STR_BTN_CANCEL), AlignCenter);
 
         draw::sceneBottom();
         draw::frameEnd();
@@ -641,23 +641,25 @@ void showSlotDetails(const std::string& heading, const wifi::Slot& slot)
 
         draw::sceneBottom();
         drawHeader(lang::get(lang::STR_DETAILS_CONN_INFO));
-        float y = theme::headerH + 14;
+        float y = theme::headerH + 12;
         draw::text(theme::pad, y, FS_SMALL, theme::textDim, lang::get(lang::STR_DETAILS_SEC_PROTO));
-        draw::text(theme::pad, y + 14, FS_BODY, theme::text, wifi::securityLabel(slot.encryption));
-        y += 44;
+        draw::text(theme::pad, y + 13, FS_BODY, theme::text, wifi::securityLabel(slot.encryption));
+        y += 36;
         draw::text(theme::pad, y, FS_SMALL, theme::textDim, lang::get(lang::STR_DETAILS_PW_LENGTH));
         char lenBuf[64];
         if (slot.encryption == WIFI_ENCRYPTION_OPEN)
             std::snprintf(lenBuf, sizeof(lenBuf), "%s", lang::get(lang::STR_DETAILS_OPEN_CHARS));
         else
             std::snprintf(lenBuf, sizeof(lenBuf), lang::get(lang::STR_DETAILS_CHARS), (int)slot.password.size());
-        draw::text(theme::pad, y + 14, FS_BODY, theme::text, lenBuf);
-        y += 44;
+        draw::text(theme::pad, y + 13, FS_BODY, theme::text, lenBuf);
+        y += 36;
         draw::text(theme::pad, y, FS_SMALL, theme::textDim, lang::get(lang::STR_DETAILS_MODE));
-        draw::text(theme::pad, y + 14, FS_BODY, theme::text,
+        draw::text(theme::pad, y + 13, FS_BODY, theme::text,
                    slot.editableSecurity ? lang::get(lang::STR_DETAILS_MANUAL) : lang::get(lang::STR_DETAILS_WPS));
+        y += 36;
+        draw::textWrapped(theme::pad, y, FS_SMALL, theme::accent, lang::get(lang::STR_NOTE_24GHZ_ONLY), 320 - theme::pad * 2);
 
-        drawHint(true, "Tap / B: back");
+        drawHint(true, lang::get(lang::STR_HINT_TAP_BACK));
         draw::frameEnd();
     }
 }
@@ -804,10 +806,11 @@ void runSettings()
 
         draw::text(cardX + 16, cardY + 14, FS_TITLE, theme::text, lang::get(lang::STR_SETTINGS_APP_INFO));
 
-        draw::text(cardX + 16, cardY + 40, FS_BODY, theme::accent, std::string("WiFiManager+ ") + APP_VERSION);
-        draw::text(cardX + 16, cardY + 60, FS_SMALL, theme::textDim, "Nintendo 3DS Wi-Fi Profile & Backup Manager");
+        draw::text(cardX + 16, cardY + 38, FS_BODY, theme::accent, std::string("WiFiManager+ ") + APP_VERSION);
+        draw::text(cardX + 16, cardY + 56, FS_SMALL, theme::textDim, "Nintendo 3DS Wi-Fi Profile & Backup Manager");
 
-        draw::textWrapped(cardX + 16, cardY + 92, FS_BODY, theme::text, lang::get(lang::STR_SETTINGS_APP_DESC), cardW - 32);
+        draw::textWrapped(cardX + 16, cardY + 80, FS_SMALL, theme::warn, lang::get(lang::STR_NOTE_24GHZ_ONLY), cardW - 32);
+        draw::textWrapped(cardX + 16, cardY + 120, FS_SMALL, theme::textDim, lang::get(lang::STR_NOTE_RELOAD_SYS), cardW - 32);
 
         drawHint(false, lang::get(lang::STR_HINT_BACK));
 
@@ -887,7 +890,7 @@ void runHelp()
         draw::frameBegin();
         draw::sceneTop();
         drawHeader(lang::get(lang::STR_HELP_TITLE), APP_VERSION);
-        float x = theme::pad, y = theme::headerH + 12;
+        float x = theme::pad, y = theme::headerH + 8;
         const char* lines[] = {
             lang::get(lang::STR_HELP_1),
             lang::get(lang::STR_HELP_2),
@@ -898,8 +901,15 @@ void runHelp()
             lang::get(lang::STR_HELP_7),
             lang::get(lang::STR_HELP_8),
             lang::get(lang::STR_HELP_9),
+            lang::get(lang::STR_HELP_10),
+            lang::get(lang::STR_HELP_11),
         };
-        for (auto l : lines) { draw::text(x, y, FS_BODY, theme::text, l); y += 19; }
+        for (auto l : lines) {
+            u32 c = (l[0] == '!') ? theme::warn : theme::text;
+            float sz = (l[0] == '!') ? FS_SMALL : FS_BODY;
+            draw::text(x, y, sz, c, l);
+            y += (l[0] == '!') ? 15 : 17;
+        }
         drawHint(false, lang::get(lang::STR_HINT_CLOSE));
         draw::sceneBottom();
         draw::frameEnd();
