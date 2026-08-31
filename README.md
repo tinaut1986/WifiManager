@@ -1,12 +1,16 @@
 # WiFiManager+
 
+<p align="center">
+  <img src="meta/banner.png" alt="WiFiManager+ Banner" width="400"/>
+</p>
+
 A 3DS homebrew for managing your console's Wi-Fi configuration slots.
 
 > **This is a fork.** WiFiManager+ is based on
 > [LiquidFenrir's **WifiManager**](https://github.com/LiquidFenrir/WifiManager)
 > and is not the original project. It keeps the same purpose — backing up and
 > restoring the three system Wi-Fi slots — but the interface has been rebuilt on
-> citro2d and it adds QR import/share and in-app editing.
+> citro2d and it adds QR import/share, custom themes, and touchscreen controls.
 
 ## What's different from the original
 
