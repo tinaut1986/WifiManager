@@ -148,12 +148,125 @@ bool readConsoleSlot(int index, Slot& out)
     return true;
 }
 
+// -----------------------------------------------------------------------------
+//  Writing a slot so that the console uses it at once.
+//
+//  The system keeps the slots twice: in the config savegame (the blocks above)
+//  and in the ac service, which reads them from the config once, at boot, and
+//  connects with its own copy. Writing the blocks therefore changed nothing the
+//  console used until System Settings was opened (and ac's next flush could
+//  even write its old copy back). So a slot is written through ac:i, as System
+//  Settings does: LoadNetworkSetting (InitializeNetworkSetting for an empty
+//  slot), one setter per field, UpdateNetworkSetting, FlushNetworkSetting (ac
+//  then saves the config itself). Command ids from 3dbrew's AC Services page.
+//
+//  The static buffer number each setter takes is not documented; found on a
+//  New 3DS XL (11.17) by sending empty buffers (ac checks the number, not the
+//  size): SSID 2, key 3, BSSID 4, passphrase 8, IP 9, gateway 10, netmask 11,
+//  DNS 12, proxy host 13, proxy user 14, proxy password 15. A buffer LARGER than
+//  what ac set aside for that number brings the whole console down (kernel
+//  abort; seen with 0x40 bytes to number 2), so each field is sent with its own
+//  size, never more. Same code as NSA's source/fbi/wifislots.c.
+// -----------------------------------------------------------------------------
+
+namespace
+{
+    Result aciCall(u32 header, u32 param)
+    {
+        u32* cmdbuf = getThreadCommandBuffer();
+        cmdbuf[0] = header;
+        cmdbuf[1] = param;
+        Result r = svcSendSyncRequest(*acGetSessionHandle());
+        return R_FAILED(r) ? r : static_cast<Result>(cmdbuf[1]);
+    }
+
+    Result aciSet(u16 command, u32 value)
+    {
+        return aciCall(IPC_MakeHeader(command, 1, 0), value);
+    }
+
+    Result aciSetStatic(u16 command, u32 id, const void* data, size_t size)
+    {
+        u32* cmdbuf = getThreadCommandBuffer();
+        cmdbuf[0] = IPC_MakeHeader(command, 0, 2);
+        cmdbuf[1] = IPC_Desc_StaticBuffer(size, id);
+        cmdbuf[2] = reinterpret_cast<u32>(data);
+        Result r = svcSendSyncRequest(*acGetSessionHandle());
+        return R_FAILED(r) ? r : static_cast<Result>(cmdbuf[1]);
+    }
+
+    // The main network (setters 0x410-0x418) or WPS/AOSS setting n (0x420 + n * 10).
+    Result aciSetNetwork(u16 base, const sub_network_s& n)
+    {
+        Result r = aciSetStatic(base, 2, n.SSID, sizeof(n.SSID));
+        if (R_SUCCEEDED(r)) r = aciSet(base + 2, n.SSID_length);
+        if (R_SUCCEEDED(r)) r = aciSet(base + 4, n.encryption_type);
+        if (R_SUCCEEDED(r)) r = aciSetStatic(base + 6, 8, n.password_text, sizeof(n.password_text));
+        if (R_SUCCEEDED(r)) r = aciSetStatic(base + 8, 3, n.password_key, sizeof(n.password_key));
+        return r;
+    }
+
+    Result writeThroughAc(int index, const wifi_slot_s& d)
+    {
+        Result r;
+#define WM_STEP(call) do { if (R_FAILED(r = (call))) return r; } while (0)
+        // An empty slot: ac's own removal (the console forgets it at once too).
+        if (d.version == 0)
+        {
+            WM_STEP(aciCall(IPC_MakeHeader(0x403, 1, 0), static_cast<u32>(index)));
+            WM_STEP(aciCall(IPC_MakeHeader(0x404, 0, 0), 0));
+            return 0;
+        }
+
+        if (R_FAILED(aciCall(IPC_MakeHeader(0x401, 1, 0), static_cast<u32>(index))))
+            WM_STEP(aciCall(IPC_MakeHeader(0x406, 1, 0), 1));
+
+        WM_STEP(aciSet(0x408, d.version));
+        WM_STEP(aciSet(0x40C, d.network_enable));
+        WM_STEP(aciSet(0x40E, d.editable_security));
+        WM_STEP(aciSetNetwork(0x410, d.main_network));
+        WM_STEP(aciSet(0x41A, d.multissid_enable));
+        WM_STEP(aciSet(0x41C, d.multissid_type));
+        WM_STEP(aciSet(0x41E, d.multissid_amount));
+        for (u32 i = 0; i < 4; ++i)
+            WM_STEP(aciSetNetwork(static_cast<u16>(0x420 + i * 10), d.multissid_networks[i]));
+        WM_STEP(aciSet(0x448, d.enable_DHCP));
+        WM_STEP(aciSet(0x44A, d.enable_autoDNS));
+        WM_STEP(aciSetStatic(0x44C, 9, d.ip_address, sizeof(d.ip_address)));
+        WM_STEP(aciSetStatic(0x44E, 10, d.gateway_address, sizeof(d.gateway_address)));
+        WM_STEP(aciSetStatic(0x450, 11, d.subnet_mask, sizeof(d.subnet_mask)));
+        WM_STEP(aciSetStatic(0x452, 12, d.dns_primary, sizeof(d.dns_primary)));
+        WM_STEP(aciSetStatic(0x454, 12, d.dns_secondary, sizeof(d.dns_secondary)));
+        WM_STEP(aciSet(0x456, d.connection_test_success));
+        WM_STEP(aciSetStatic(0x45A, 4, d.AP_MAC_address, sizeof(d.AP_MAC_address)));
+        WM_STEP(aciSet(0x460, d.enable_proxy));
+        WM_STEP(aciSet(0x462, d.proxy_auth));
+        WM_STEP(aciSet(0x464, d.port_number));
+        WM_STEP(aciSetStatic(0x466, 13, d.proxy_url, sizeof(d.proxy_url)));
+        WM_STEP(aciSetStatic(0x468, 14, d.proxy_username, sizeof(d.proxy_username)));
+        WM_STEP(aciSetStatic(0x46A, 15, d.proxy_password, sizeof(d.proxy_password)));
+        WM_STEP(aciSet(0x46C, d.UPnP_value));
+        WM_STEP(aciSet(0x46E, d.MTU_value));
+        WM_STEP(aciCall(IPC_MakeHeader(0x402, 1, 0), static_cast<u32>(index)));
+        WM_STEP(aciCall(IPC_MakeHeader(0x404, 0, 0), 0));
+#undef WM_STEP
+        return 0;
+    }
+}
+
 Result writeConsoleSlot(int index, const Slot& in)
 {
     wifi_slot_s data = in.raw;
     fixCrc(data);
-    Result r = CFG_SetConfigInfoBlk8(sizeof(data), CFG_WIFI_BLKID + index,
-                                     reinterpret_cast<u8*>(&data));
+
+    // Through ac:i, so the console uses it at once (see above).
+    Result r = writeThroughAc(index, data);
+    if (R_SUCCEEDED(r)) return r;
+
+    // No ac:i (an old firmware, or no Luma3DS): the config blocks, as before;
+    // the console takes them up at its next boot (or after System Settings).
+    r = CFG_SetConfigInfoBlk8(sizeof(data), CFG_WIFI_BLKID + index,
+                              reinterpret_cast<u8*>(&data));
     if (R_SUCCEEDED(r)) r = CFG_UpdateConfigSavegame();
     return r;
 }

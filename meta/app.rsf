@@ -208,6 +208,7 @@ AccessControlInfo:
   ServiceAccessControl:
    - APT:U
    - ac:u
+   - ac:i
    - am:net
    - boss:U
    - cam:u

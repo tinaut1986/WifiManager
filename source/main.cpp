@@ -9,6 +9,7 @@ FS_Archive sdmcArchive;
 int main(int, char**)
 {
     cfguInit();
+    acInit();   // ac:i, to write slots the way System Settings does (wifi.cpp).
 
     FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""));
 
@@ -18,6 +19,7 @@ int main(int, char**)
     draw::exit();
 
     FSUSER_CloseArchive(sdmcArchive);
+    acExit();
     cfguExit();
     return 0;
 }
